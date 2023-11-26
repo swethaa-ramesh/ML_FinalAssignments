@@ -1,0 +1,1950 @@
+---
+project:
+  type: website
+  output-dir: docs   lfs track "F:\Quarto"
+format: html
+jupyter: python3
+
+---
+```{=html}
+<h1 style="text-align:center">Machine Learning (CS 5805)</h1>
+<h2 style="text-align:center">Submitted by: Swethaa Shanmugam Ramesh</h2>
+<h1>1. Probability theory and random variables</h1> 
+```
+
+```{python}
+import warnings
+import seaborn as sns
+import matplotlib.pyplot as plt
+warnings.filterwarnings('ignore')
+import numpy as np
+import pandas as pd
+from IPython.display import Image
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import DBSCAN
+sns.set(style="darkgrid", palette="pastel", color_codes=True)
+sns.set_context('talk')
+```
+
+```{python}
+df = pd.read_csv('Walmart_Store_sales.csv')
+
+df.head(5)
+```
+
+```{python}
+df.columns
+```
+
+```{python}
+df.info()
+```
+
+```{python}
+df.describe()
+```
+
+```{python}
+df.shape
+```
+
+```{python}
+df.isnull()
+```
+
+```{python}
+df.dropna(inplace =True)
+df.isnull().sum()
+```
+
+```{python}
+df.duplicated().any()
+```
+
+
+```{python}
+from scipy.stats import norm
+
+variable_of_interest = 'Weekly_Sales'
+
+plt.figure(figsize=(8, 6))
+sns.histplot(df[variable_of_interest], kde=True, bins=30, color='blue', stat='density')
+
+mu, std = df[variable_of_interest].mean(), df[variable_of_interest].std()
+xmin, xmax = plt.xlim()
+x = np.linspace(xmin, xmax, 100).round(2)
+p = norm.pdf(x, mu, std).round(2)
+plt.plot(x, p, 'k', linewidth=2)
+print(variable_of_interest,x,p)
+plt.xlabel(variable_of_interest)
+plt.ylabel('Probability Density')
+plt.title(f'Probability Density Function for {variable_of_interest}')
+plt.show()
+
+```
+
+```{python}
+sns.set(style="whitegrid")
+df.drop('Date', axis=1, inplace=True)
+num_columns = len(df.columns)
+num_rows = (num_columns // 2) + (num_columns % 2)  
+num_cols = 2
+fig, axes = plt.subplots(num_rows, num_cols, figsize=(8, 3 * num_rows))
+if num_rows == 1:
+    axes = axes.reshape(1, -1)
+for i, column in enumerate(df.columns):
+    row_idx = i // num_cols
+    col_idx = i % num_cols
+    sns.histplot(df[column], kde=True, bins=30, color='blue', stat='density', ax=axes[row_idx, col_idx])
+
+    mu, std = df[column].mean(), df[column].std()
+    xmin, xmax = axes[row_idx, col_idx].get_xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = norm.pdf(x, mu, std)
+    axes[row_idx, col_idx].plot(x, p, 'k', linewidth=2)
+    print(column )
+    print(x,p)
+    axes[row_idx, col_idx].set_xlabel(column)
+    axes[row_idx, col_idx].set_ylabel('Probability Density')
+    axes[row_idx, col_idx].set_title(f'PDF for {column}')
+
+if num_columns % 2 == 1:
+    fig.delaxes(axes[-1, -1])
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+from scipy.stats import rv_histogram
+column_of_interest = 'Weekly_Sales'
+hist, bin_edges = np.histogram(df[column_of_interest], bins=30, density=True)
+pmf = rv_histogram((hist, bin_edges))
+x_values = np.linspace(df[column_of_interest].min(), df[column_of_interest].max(), 100).round(2)
+pmf_values = pmf.pdf(x_values)
+print("X values\n",x_values)
+print("pmf values \n",pmf_values)
+plt.bar(bin_edges[:-1], hist, width=np.diff(bin_edges), alpha=0.7, label='Histogram')
+plt.plot(x_values, pmf_values, color='red', label='PMF', linewidth=2)
+plt.title(f'Probability Mass Function (PMF) for {column_of_interest}')
+plt.xlabel(column_of_interest)
+plt.ylabel('Probability')
+plt.legend()
+plt.show()
+
+```
+
+```{python}
+from scipy.stats import geom
+selected_column = 'Temperature'
+temperature_threshold = 60
+success_data = df[df[selected_column] > temperature_threshold]
+p = len(success_data) / len(df)
+print('probability of success ',p)
+k_values = np.arange(1, 11)
+pmf_values = geom.pmf(k_values, p)
+plt.bar(k_values, pmf_values, align='center', alpha=0.7)
+plt.title(f'Geometric Distribution PMF for {selected_column}')
+plt.xlabel('Number of Trials Until First Success (k)')
+plt.ylabel('Probability')
+plt.show()
+
+```
+
+```{python}
+import statsmodels.api as sm
+columns = df.columns
+fig, axes = plt.subplots(nrows=len(columns), ncols=1, figsize=(8, 4 * len(columns)))
+for i, column in enumerate(columns):
+    ecdf = sm.distributions.ECDF(df[column])
+    x = sorted(df[column].unique())
+    y = ecdf(x)
+    print(column)
+    print(x,y)
+    axes[i].step(x, y, label=column)
+    axes[i].set_title(f'Cumulative Distribution Function of {column}')
+    axes[i].set_xlabel(column)
+    axes[i].set_ylabel('Cumulative Probability')
+    axes[i].legend()
+plt.tight_layout()
+plt.show()
+
+```
+
+```{python}
+
+from scipy.stats import hypergeom
+population_size = len(df)
+sample_size = 10
+num_columns = len(df.columns)
+num_rows = (num_columns // 2) + (num_columns % 2)
+num_cols = 2
+
+fig, axes = plt.subplots(num_rows, num_cols, figsize=(15, 3 * num_rows))
+if num_rows == 1:
+    axes = axes.reshape(1, -1)
+for i, column in enumerate(df.columns):
+    row_idx = i // num_cols
+    col_idx = i % num_cols
+
+    numeric_data = pd.to_numeric(df[column], errors='coerce')
+    numeric_data = numeric_data.dropna()
+    successes_in_population = np.sum(numeric_data > 0)
+    print(column)
+    print('successes',successes_in_population)
+    k_values = np.arange(0, min(sample_size, successes_in_population) + 1)
+
+    pmf_values = hypergeom.pmf(k_values, population_size, successes_in_population, sample_size)
+    print(f'Hypergeometric Distribution PMF for {column}',pmf_values)
+    axes[row_idx, col_idx].bar(k_values, pmf_values, align='center', alpha=0.7)
+    axes[row_idx, col_idx].set_title(f'Hypergeometric Distribution PMF for {column}')
+    axes[row_idx, col_idx].set_xlabel('Number of Successes in Draws (k)')
+    axes[row_idx, col_idx].set_ylabel('Probability')
+
+if num_columns % 2 == 1:
+    fig.delaxes(axes[-1, -1])
+
+plt.tight_layout()
+plt.show()
+
+```
+
+```{python}
+from scipy.stats import norm
+numeric_columns = df.select_dtypes(include=['int64', 'float64']).columns
+
+fig, axes = plt.subplots(nrows=len(numeric_columns), figsize=(8, 4 * len(numeric_columns)))
+fig.subplots_adjust(hspace=0.5)
+
+for i, column in enumerate(numeric_columns):
+    sns.histplot(df[column], kde=True, ax=axes[i])
+    axes[i].set_title(f'Distribution of {column}')
+    axes[i].set_xlabel(column)
+    axes[i].set_ylabel('Density')
+    mu, std = norm.fit(df[column])
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = norm.pdf(x, mu, std)
+    axes[i].plot(x, p, 'k', linewidth=2)
+    axes[i].legend(['Gaussian fit'])
+
+plt.tight_layout()
+plt.show()
+
+```
+
+```{=html}
+<h3>2.Clustering</h3> 
+```
+
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+```
+
+```{python}
+df = pd.read_csv('IMDB.csv')
+```
+
+```{python}
+df.head()
+```
+
+```{python}
+df.columns
+```
+
+```{python}
+df['Year']
+```
+```{python}
+df.dropna(inplace=True)
+```
+```{python}
+df.isnull().sum()
+```
+```{python}
+plt.figure(figsize=(10, 6))
+sns.countplot(x='Type', data=df, palette='viridis')
+plt.title('Distribution of TV Shows by Genres')
+plt.show()
+```
+```{python}
+top_rated_shows = df.sort_values(by='Rating', ascending=False).head(10)
+plt.figure(figsize=(12, 6))
+sns.barplot(x='Rating', y='Name', data=top_rated_shows, palette='Blues_r')
+plt.title('Top-rated TV Shows and Their IMDb Ratings')
+plt.xlabel('IMDb Rating')
+plt.ylabel('TV Show Name')
+plt.show()
+```
+```{python}
+plt.figure(figsize=(12, 6))
+sns.swarmplot(x='Type', y='Rating', data=df, palette='dark', size=8)
+plt.title('IMDb Ratings Distribution by TV Show Type')
+plt.xlabel('TV Show Type')
+plt.ylabel('IMDb Rating')
+plt.show()
+```
+```{python}
+sns.pairplot(df[['Year', 'Episodes', 'Rating', 'Type']], hue='Type', palette='Set1')
+plt.suptitle('Pair Plot of TV Show Data with Type Hue', y=1.02)
+plt.show()
+```
+```{python}
+fig, ax = plt.subplots(1, figsize = (30,8))
+ax = sns.scatterplot(x='Year', y='Rating', data=df, hue='Type', palette='Set1', alpha=0.7)
+ax.grid()
+fig.autofmt_xdate()
+plt.xticks(rotation = 90, ha = 'right',
+           fontsize = 10)
+plt.xlim(0, 178)
+plt.title('Correlation between Release Year and IMDb Ratings')
+plt.xlabel('Release Year')
+plt.ylabel('IMDb Rating')
+plt.legend(title='TV Show Type')
+plt.show()
+```
+
+
+```{python}
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+top_rated_descriptions = " ".join(df['Description'])
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(top_rated_descriptions)
+# Plot the WordCloud image
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title('Word Cloud of Top-rated TV Show Descriptions')
+plt.show()
+```
+```{python}
+numerical_features = df[['Year', 'Episodes', 'Rating']]
+```
+```{python}
+df['Year'] = df['Year'].astype(str)
+df.loc[:, 'Year'] = df['Year'].str.split('–').str[0].astype(int)
+```
+```{python}
+df.loc[:, 'Episodes'] = pd.to_numeric(df['Episodes'].str.extract('(\d+)')[0], errors='coerce')
+```
+```{python}
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
+features = df[['Year', 'Episodes', 'Rating']]
+features = features.dropna()
+scaler = StandardScaler()
+features_scaled = scaler.fit_transform(features)
+num_clusters = 3
+kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+df['Cluster'] = kmeans.fit_predict(features_scaled)
+print(df[['Name', 'Cluster']])
+plt.scatter(features_scaled[:, 0], features_scaled[:, 1], c=df['Cluster'], cmap='viridis')
+plt.xlabel('Year')
+plt.ylabel('Episodes')
+plt.title('K-Means Clustering')
+plt.show()
+```
+```{python}
+X = df[['Year', 'Episodes', 'Rating']].dropna()
+
+wcss = []
+for i in range(1, 11):
+    kmeans = KMeans(n_clusters=i, init='k-means++', random_state=0)
+    kmeans.fit(X)
+    wcss.append(kmeans.inertia_)
+
+plt.plot(range(1, 11), wcss, marker='o')
+plt.title('The Elbow Method')
+plt.xlabel('Number of Clusters')
+plt.ylabel('WCSS')
+plt.show()
+```
+```{python}
+num_clusters = 4
+clusterer = KMeans(n_clusters=num_clusters, random_state=10)
+cluster_labels = clusterer.fit_predict(X)
+print("Cluster Labels:")
+print(cluster_labels)
+df['Cluster'] = cluster_labels
+print("Data with Cluster Labels:")
+print(df[['Name', 'Year', 'Episodes', 'Rating', 'Cluster']])
+```
+```{python}
+
+from sklearn.metrics import silhouette_samples, silhouette_score
+import matplotlib.cm as cm
+range_n_clusters = [2, 3, 4, 5, 6]
+for n_clusters in range_n_clusters:
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    
+    ax1.set_xlim([-0.1, 1])
+    ax1.set_ylim([0, len(X) + (n_clusters + 1) * 10])
+    clusterer = KMeans(n_clusters=n_clusters, random_state=10)
+    cluster_labels = clusterer.fit_predict(X)
+    silhouette_avg = silhouette_score(X, cluster_labels)
+    print("For n_clusters =", n_clusters,
+          "The average silhouette_score is :", silhouette_avg)
+    sample_silhouette_values = silhouette_samples(X, cluster_labels)
+    y_lower = 10
+    for i in range(n_clusters):
+        ith_cluster_silhouette_values = \
+            sample_silhouette_values[cluster_labels == i]
+        ith_cluster_silhouette_values.sort()
+        size_cluster_i = ith_cluster_silhouette_values.shape[0]
+        y_upper = y_lower + size_cluster_i
+        color = cm.nipy_spectral(float(i) / n_clusters)
+        ax1.fill_betweenx(np.arange(y_lower, y_upper),
+                          0, ith_cluster_silhouette_values,
+                          facecolor=color, edgecolor=color, alpha=0.7)
+
+        ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+        y_lower = y_upper + 10  
+    ax1.set_title("The silhouette plot ")
+    ax1.set_xlabel("The silhouette coefficient values")
+    ax1.set_ylabel("Cluster label")
+    ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
+    ax1.set_yticks([])  
+    ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+    colors = cm.nipy_spectral(cluster_labels.astype(float) / n_clusters)
+    ax2.scatter(X.iloc[:, 0], X.iloc[:, 1], marker='.', s=30, lw=0, alpha=0.7,
+                c=colors, edgecolor='k')
+
+    centers = clusterer.cluster_centers_
+    ax2.scatter(centers[:, 0], centers[:, 1], marker='o',
+                c="white", alpha=1, s=200, edgecolor='k')
+
+    for i, c in enumerate(centers):
+        ax2.scatter(c[0], c[1], marker='$%d$' % i, alpha=1,
+                    s=50, edgecolor='k')
+
+    ax2.set_title("The visualization of the clustered data.")
+    ax2.set_xlabel("Feature space for the 1st feature")
+    ax2.set_ylabel("Feature space for the 2nd feature")
+
+    plt.suptitle(("Silhouette analysis for KMeans clustering on sample data "
+                  "with n_clusters = %d" % n_clusters),
+                 fontsize=14, fontweight='bold')
+
+plt.show()
+```
+
+```{=html}
+<h3>3. a)Linear Regression
+</h3> 
+```
+```{python}
+df = pd.read_csv('CarPrice_Assignment.csv')
+df.head()
+```
+```{python}
+df.columns
+```
+```{python}
+df.info()
+```
+```{python}
+df.describe()
+```
+```{python}
+df.shape
+```
+```{python}
+df.isnull()
+```
+```{python}
+sns.heatmap(df.isnull(),yticklabels=False,cbar=False,cmap='viridis')
+```
+```{python}
+df.dropna(inplace =True)
+df.isnull().sum()
+```
+```{python}
+df.duplicated().any()
+```
+```{python}
+df.describe(include=object)
+```
+```{python}
+df = df.select_dtypes(include=['float64', 'int64'])
+df.corr()
+```
+```{python}
+correlation_matrix = df[['carlength', 'carwidth', 'curbweight']].corr()
+plt.figure(figsize=(8, 6))
+sns.heatmap(correlation_matrix,  cmap='coolwarm', center=0)
+for i in range(len(correlation_matrix)):
+    for j in range(len(correlation_matrix)):
+        plt.text(j + 0.5, i + 0.5, f"{correlation_matrix.iloc[i, j]:.2f}", ha='center', va='center', fontsize=10)
+plt.title('Correlation Matrix')
+plt.show()
+```
+```{python}
+df = df.drop(['symboling', 'car_ID', ], axis=1)
+print(df.head())
+```
+```{python}
+df.shape
+```
+```{python}
+df.columns
+```
+```{python}
+X = df.drop('price', axis=1)
+y = df['price']
+```
+```{python}
+X.head()
+```
+```{python}
+y
+```
+```{python}
+plt.figure(figsize=(8, 6))
+sns.heatmap(df.corr(), cmap='coolwarm', fmt=".2f", linewidths=.5)
+for i in range(len(df.corr())):
+    for j in range(len(df.corr())):
+        plt.text(j + 0.5, i + 0.5, f"{df.corr().iloc[i, j]:.2f}", ha='center', va='center', fontsize=10)
+
+plt.title('Correlation Heatmap')
+plt.show()
+```
+
+```{python}
+sns.pairplot(df)
+```
+
+```{python}
+plt.figure(figsize=(8, 6))
+sns.histplot(df['enginesize'], kde=True, color='skyblue')
+plt.title('Distribution of Engine Size')
+plt.show()
+```
+
+```{python}
+plt.figure(figsize=(8, 6))
+sns.histplot(df['wheelbase'], kde=True)
+plt.title('Distribution of Wheelbase')
+plt.show()
+```
+
+```{python}
+plt.figure(figsize=(8, 6))
+sns.histplot(df['carlength'], kde=True)
+plt.title('Distribution of Car Length')
+plt.show()
+```
+
+```{python}
+
+plt.figure(figsize=(8, 6))
+sns.histplot(df['carlength'], kde=True)
+plt.title('Distribution of Car Length')
+plt.show()
+```
+
+```{python}
+plt.figure(figsize=(8, 6))
+sns.histplot(df['carheight'], kde=True)
+plt.title('Distribution of Car Height')
+plt.show()
+```
+
+```{python}
+plt.figure(figsize=(8, 6))
+sns.histplot(df['curbweight'], kde=True)
+plt.title('Distribution of Curb Weight')
+plt.show()
+```
+
+```{python}
+plt.scatter(df['enginesize'], df['price'])
+plt.xlabel('Engine Size')
+plt.ylabel('Price')
+plt.title('Scatter Plot between Engine Size and Price')
+plt.show()
+```
+```{python}
+sns.scatterplot(x='horsepower', y='price', data=df)
+plt.title('Horsepower vs. Price (Scatter Plot)')
+plt.show()
+```
+```{python}
+sns.histplot(df['price'], kde=True, color='skyblue')
+plt.title('Distribution of Car Prices with KDE')
+plt.show()
+```
+
+```{python}
+sns.histplot(df['citympg'], kde=True, bins=20, color='skyblue')
+plt.title('Distribution of City MPG')
+plt.xlabel('City MPG')
+plt.show()
+```
+
+
+
+```{python}
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=0.25,random_state=42)
+```
+
+```{python}
+sns.regplot(x='wheelbase', y='price', data=df, scatter_kws={'s': 20}, line_kws={'color': 'red'})
+plt.title('Wheelbase vs. Price')
+plt.xlabel('Wheelbase')
+plt.ylabel('Price')
+plt.show()
+```
+
+```{python}
+sns.regplot(x='carlength', y='price', data=df, scatter_kws={'s': 20}, line_kws={'color': 'red'})
+plt.title('Car Length vs. Price')
+plt.xlabel('Car Length')
+plt.ylabel('Price')
+plt.show()
+```
+
+```{python}
+sns.regplot(x='curbweight', y='price', data=df, scatter_kws={'s': 20}, line_kws={'color': 'red'})
+plt.title('Curb Weight vs. Price')
+plt.xlabel('Curb Weight')
+plt.ylabel('Price')
+plt.show()
+```
+
+```{python}
+sns.regplot(x='enginesize', y='price', data=df, scatter_kws={'s': 20}, line_kws={'color': 'red'})
+plt.title('Engine Size vs. Price')
+plt.xlabel('Engine Size')
+plt.ylabel('Price')
+plt.show()
+```
+
+```{python}
+sns.regplot(x='horsepower', y='price', data=df, scatter_kws={'s': 20}, line_kws={'color': 'red'})
+plt.title('Horsepower vs. Price')
+plt.xlabel('Horsepower')
+plt.ylabel('Price')
+plt.show()
+```
+
+```{python}
+sns.regplot(x='citympg', y='price', data=df, scatter_kws={'s': 20}, line_kws={'color': 'red'})
+plt.title('City MPG vs. Price')
+plt.xlabel('City MPG')
+plt.ylabel('Price')
+plt.show()
+```
+
+```{python}
+print(X_train.columns)
+```
+```{python}
+import pandas as pd
+categorical_cols = ['enginesize', 'horsepower', 'peakrpm']
+X_train_encoded = pd.get_dummies(X_train, columns=categorical_cols)
+X_test_encoded = pd.get_dummies(X_test, columns=categorical_cols)
+```
+
+```{python}
+for column in X_train.columns:
+    unique_values = X_train[column].nunique()
+    print(f"Column '{column}' has {unique_values} unique values.")
+```
+
+```{python}
+from sklearn.linear_model import LinearRegression
+regression=LinearRegression()
+```
+```{python}
+for col in categorical_cols:
+    print(f"Unique values in '{col}': {X_train[col].unique()}")
+```
+
+```{python}
+print(X_train.dtypes)
+```
+```{python}
+X_train_encoded = pd.get_dummies(X_train, columns=categorical_cols)
+```
+
+```{python}
+X_train_encoded = pd.get_dummies(X_train, columns=categorical_cols)
+X_test_encoded = pd.get_dummies(X_test, columns=categorical_cols)
+```
+
+```{python}
+non_numeric_cols_train = X_train_encoded.select_dtypes(exclude=['float64', 'int64']).columns
+
+non_numeric_cols_test = X_test_encoded.select_dtypes(exclude=['float64', 'int64']).columns
+
+print("Non-numeric columns in X_train_encoded:", non_numeric_cols_train)
+print("Non-numeric columns in X_test_encoded:", non_numeric_cols_test)
+```
+
+```{python}
+from sklearn.preprocessing import LabelEncoder
+label_encoder_train = LabelEncoder()
+for col in non_numeric_cols_train:
+    X_train_encoded[col] = label_encoder_train.fit_transform(X_train_encoded[col])
+
+label_encoder_test = LabelEncoder()
+for col in non_numeric_cols_test:
+    X_test_encoded[col] = label_encoder_test.fit_transform(X_test_encoded[col])
+```
+
+```{python}
+for col in non_numeric_cols_train:
+    print(f"Unique values in {col}: {X_train_encoded[col].unique()}")
+```
+
+```{python}
+for col in non_numeric_cols_test:
+    print(f"Unique values in {col}: {X_test_encoded[col].unique()}")
+```
+
+```{python}
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+label_encoder = LabelEncoder()
+
+for col in categorical_cols:
+    X_train[col] = label_encoder.fit_transform(X_train[col])
+
+onehot_encoder = OneHotEncoder(drop='first', sparse=False)
+
+X_train_encoded = pd.get_dummies(X_train, columns=categorical_cols, drop_first=True)
+X_test_encoded = pd.get_dummies(X_test, columns=categorical_cols, drop_first=True)
+
+X_train_encoded, X_test_encoded = X_train_encoded.align(X_test_encoded, join='outer', axis=1, fill_value=0)
+
+regression.fit(X_train_encoded, y_train)
+```
+
+```{python}
+from sklearn.model_selection import cross_val_score
+validation_score=cross_val_score(regression,X_train,y_train,scoring='neg_mean_squared_error',
+                             cv=3)
+```
+
+```{python}
+np.mean(validation_score)
+```
+
+```{python}
+y_pred = regression.predict(X_test_encoded)
+y_pred
+```
+```{python}
+from sklearn.metrics import mean_absolute_error,mean_squared_error
+mse=mean_squared_error(y_test,y_pred)
+mae=mean_absolute_error(y_test,y_pred)
+rmse=np.sqrt(mse)
+print(mse)
+print(mae)
+print(rmse)
+```
+
+```{python}
+from sklearn.metrics import r2_score
+score=r2_score(y_test,y_pred)
+print(score)
+print(1 - (1-score)*(len(y_test)-1)/(len(y_test)-X_test.shape[1]-1))
+```
+
+```{python}
+plt.scatter(y_test,y_pred)
+```
+
+```{python}
+residuals=y_test-y_pred
+print(residuals)
+```
+
+```{python}
+sns.displot(residuals,kind='kde')
+```
+
+```{python}
+plt.scatter(y_pred,residuals)
+```
+
+```{python}
+sns.histplot(y_pred, kde=True, color='skyblue')
+plt.title('Distribution of Predicted Prices')
+plt.xlabel('Predicted Prices')
+plt.show()
+```
+
+```{=html}
+<h3 >3.b)Non-Linear Regression</h3>
+```
+```{python}
+from sklearn.ensemble import GradientBoostingRegressor
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import r2_score
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split, GridSearchCV
+import warnings
+import seaborn as sns
+import matplotlib.pyplot as plt
+warnings.filterwarnings('ignore')
+```
+
+```{python}
+df = pd.read_csv('miami-housing.csv')
+df.head()
+```
+
+```{python}
+df.columns
+```
+```{python}
+df.info()
+```
+```{python}
+df.describe()
+```
+```{python}
+df.shape
+```
+```{python}
+df.isnull()
+```
+```{python}
+df.dropna(inplace =True)
+df.isnull().sum()
+```
+```{python}
+df.duplicated().any()
+```
+```{python}
+df.corr()
+```
+```{python}
+df.drop(['LONGITUDE', 'WATER_DIST'], axis=1,inplace=True)
+```
+```{python}
+low_corr_features = ['PARCELNO', 'age', 'avno60plus', 'month_sold']
+df.drop(low_corr_features, axis=1,inplace=True)
+```
+```{python}
+df.corr()
+```
+```{python}
+plt.figure(figsize=(8, 6))
+sns.histplot(df['CNTR_DIST'], bins=30, kde=True)
+plt.title('Distribution of CNTR_DIST')
+plt.show()
+```
+```{python}
+plt.figure(figsize=(8, 6))
+sns.regplot(x='OCEAN_DIST', y='SALE_PRC', data=df)
+plt.title('Regression plot of OCEAN_DIST vs. SALE_PRC')
+plt.show()
+```
+```{python}
+plt.figure(figsize=(8, 6))
+sns.scatterplot(x='LND_SQFOOT', y='SALE_PRC', data=df)
+plt.title('Scatter plot of LND_SQFOOT vs. SALE_PRC')
+plt.show()
+```
+```{python}
+plt.figure(figsize=(8, 6))
+sns.histplot(df['SALE_PRC'], bins=30, kde=True)
+plt.title('Distribution of SALE_PRC')
+plt.show()
+```
+```{python}
+sns.set(style="darkgrid")
+color_palette = "viridis"
+sns.relplot(x='CNTR_DIST', y='SALE_PRC', sizes=(1, 100), hue='TOT_LVG_AREA', palette=color_palette, size='SALE_PRC', data=df)
+plt.xlabel('Distance to Miami Central Business')
+plt.ylabel('Sale Price')
+plt.ticklabel_format(style='plain', axis='y')
+plt.xticks(fontsize=8)
+plt.show()
+```
+```{python}
+
+sns.scatterplot(x='HWY_DIST', y='SALE_PRC', data=df)
+plt.title('Scatter plot of HWY_DIST vs. SALE_PRC')
+plt.show()
+```
+```{python}
+
+sns.histplot(df['RAIL_DIST'], bins=30, kde=True)
+plt.title('Distribution of RAIL_DIST')
+plt.show()
+```
+```{python}
+features = ['LATITUDE', 'LONGITUDE', 'LND_SQFOOT', 'TOT_LVG_AREA', 'SPEC_FEAT_VAL', 'RAIL_DIST', 'OCEAN_DIST', 'WATER_DIST', 'CNTR_DIST', 'SUBCNTR_DI', 'HWY_DIST', 'age', 'avno60plus', 'month_sold', 'structure_quality']
+target = 'SALE_PRC'
+```
+
+```{python}
+df = pd.read_csv('miami-housing.csv')
+X = df[features]
+y = df[target]
+```
+
+
+
+```{python}
+correlation_matrix = df[features + [target]].corr()
+plt.figure(figsize=(10, 6))
+sns.heatmap(correlation_matrix,  cmap="coolwarm", fmt=".2f")
+for i in range(len(correlation_matrix)):
+    for j in range(len(correlation_matrix)):
+        plt.text(j + 0.5, i + 0.5, f"{correlation_matrix.iloc[i, j]:.2f}", ha='center', va='center', fontsize=10)
+plt.title("Correlation Heatmap")
+plt.show()
+```
+
+```{python}
+
+sns.histplot(df[target], kde=True)
+plt.title("Distribution of Sale Price")
+plt.xlabel("Sale Price")
+plt.show()
+```
+
+```{python}
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+gb_model = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=3)
+model = gb_model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+r2_score(y_pred,y_test)
+```
+
+```{python}
+fea_importances = model.feature_importances_
+
+fea_importance_df = pd.DataFrame({'Feature': features, 'Importance': fea_importances})
+```
+
+```{python}
+
+fea_importance_df = fea_importance_df.sort_values(by='Importance', ascending=False)
+```
+
+```{python}
+
+plt.barh(fea_importance_df['Feature'], fea_importance_df['Importance'])
+plt.xlabel('Importance')
+plt.title('Feature Importance')
+plt.show()
+```
+
+```{python}
+%matplotlib inline
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+chosen_feature = 'LATITUDE'
+y = df['SALE_PRC']
+poly_features = PolynomialFeatures(degree=2, include_bias=False)
+X_poly = poly_features.fit_transform(X[[chosen_feature]])
+lin_reg = LinearRegression()
+lin_reg.fit(X_poly, y)
+plt.scatter(X[chosen_feature], y, color='r', label='Original Data')
+X_line = np.linspace(X[chosen_feature].min(), X[chosen_feature].max(), 100).reshape(-1, 1)
+X_line_poly = poly_features.transform(X_line)
+y_line_pred = lin_reg.predict(X_line_poly)
+plt.plot(X_line, y_line_pred, color='b', label='Polynomial Regression')
+plt.xlabel(chosen_feature)
+plt.ylabel('SALE_PRC')
+plt.legend()
+plt.show()
+```
+
+```{python}
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=0.2,random_state=42)
+```
+
+```{python}
+from sklearn.linear_model import LinearRegression
+
+y = df['SALE_PRC']
+num_features = X.shape[1]
+fig, axes = plt.subplots(nrows=num_features, ncols=1, figsize=(10, 2*num_features))
+
+for i, feature in enumerate(X.columns):
+    X_single_feature = X[feature].values.reshape(-1, 1)
+    lin_reg = LinearRegression()
+    lin_reg.fit(X_single_feature, y)
+    axes[i].scatter(X[feature], y, color='r', label='Original Data')
+    X_line = np.linspace(X[feature].min(), X[feature].max(), 100).reshape(-1, 1)
+    y_line_pred = lin_reg.predict(X_line)
+    axes[i].plot(X_line, y_line_pred, color='b', label='Simple Linear Regression')
+    axes[i].set_xlabel(feature)
+    axes[i].set_ylabel('SALE_PRC')
+    axes[i].legend()
+plt.show()
+```
+
+```{python}
+poly_features = PolynomialFeatures(degree=2, include_bias=False)
+X_poly = poly_features.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_poly, y, test_size=0.2, random_state=42)
+poly_reg_model = LinearRegression()
+poly_reg_model.fit(X_train, y_train)
+accuracy = poly_reg_model.score(X_test, y_test)
+print(f"Polynomial Regression Model Accuracy: {accuracy}")
+```
+
+```{python}
+X_poly.round(2)
+```
+
+```{python}
+print(poly_reg_model.coef_.round(2))
+```
+
+```{python}
+print(poly_reg_model.intercept_)
+```
+
+
+
+```{python}
+degree = 2
+fig, axes = plt.subplots(nrows=num_features, ncols=1, figsize=(10, 2*num_features))
+fig.tight_layout(h_pad=4)
+for i, feature in enumerate(X.columns):
+    X_single_feature = X[feature].values.reshape(-1, 1)
+    poly_features = PolynomialFeatures(degree=degree, include_bias=False)
+    X_poly = poly_features.fit_transform(X_single_feature)
+    poly_reg = LinearRegression()
+    poly_reg.fit(X_poly, y)
+    axes[i].scatter(X[feature], y, color='r', label='Original Data')
+    X_line = np.linspace(X[feature].min(), X[feature].max(), 100).reshape(-1, 1)
+    X_line_poly = poly_features.transform(X_line)
+    y_line_pred = poly_reg.predict(X_line_poly)
+    axes[i].plot(X_line, y_line_pred, color='b', label=f'Polynomial Regression (Degree {degree})')
+    axes[i].set_xlabel(feature)
+    axes[i].set_ylabel('SALE_PRC')
+    axes[i].legend()
+
+plt.show()
+```
+
+```{python}
+poly_features = PolynomialFeatures(degree=2, include_bias=False)
+X_poly = poly_features.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_poly, y, test_size=0.2, random_state=42)
+poly_reg_model = LinearRegression()
+poly_reg_model.fit(X_train, y_train)
+accuracy = poly_reg_model.score(X_test, y_test)
+print(f"Polynomial Regression Model Accuracy: {accuracy}")
+```
+
+```{python}
+num_features = X.shape[1]
+degree = 3
+fig, axes = plt.subplots(nrows=num_features, ncols=1, figsize=(10, 2*num_features))
+fig.tight_layout(h_pad=4)
+for i, feature in enumerate(X.columns):
+    X_single_feature = X[feature].values.reshape(-1, 1)
+    poly_features = PolynomialFeatures(degree=degree, include_bias=True) 
+    X_poly = poly_features.fit_transform(X_single_feature)
+    poly_reg = LinearRegression()
+    poly_reg.fit(X_poly, y)
+    axes[i].scatter(X[feature], y, color='r', label='Original Data')
+    X_line = np.linspace(X[feature].min(), X[feature].max(), 100).reshape(-1, 1)
+    X_line_poly = poly_features.transform(X_line)
+    y_line_pred = poly_reg.predict(X_line_poly)
+    axes[i].plot(X_line, y_line_pred, color='b', label=f'Polynomial Regression (Degree {degree})')
+    axes[i].set_xlabel(feature)
+    axes[i].set_ylabel('SALE_PRC')
+    axes[i].legend()
+plt.show()
+```
+
+```{python}
+from sklearn.preprocessing import PolynomialFeatures
+X = df[features]
+degree = 3
+poly_features = PolynomialFeatures(degree=degree, include_bias=False)
+X_poly = poly_features.fit_transform(X)
+poly_feature = poly_features.get_feature_names_out(X.columns)
+X_poly_df = pd.DataFrame(X_poly, columns=poly_feature)
+print(X_poly_df.head())
+```
+
+```{python}
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import confusion_matrix, roc_auc_score
+import lightgbm as lgb
+import xgboost as xgb
+from datetime import datetime
+
+df = pd.read_csv('miami-housing.csv')
+thresholdPrice = 500000
+df['Above_Threshold'] = (df['SALE_PRC'] > thresholdPrice).astype(int)
+df = df.drop(['PARCELNO'], axis=1)
+y = df['Above_Threshold'].values
+labelencoder = LabelEncoder()
+Y = labelencoder.fit_transform(y)   
+X = df.drop(labels=['Above_Threshold', 'SALE_PRC'], axis=1)  
+feature_names = np.array(X.columns)
+scaler = StandardScaler()
+scaler.fit(X)
+X = scaler.transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+dtrain_lgb = lgb.Dataset(X_train, label=y_train)
+
+lgbm_params = {
+    'learning_rate': 0.05,
+    'boosting_type': 'gbdt',
+    'objective': 'binary',
+    'metric': ['auc', 'binary_logloss'],
+    'num_leaves': 100,
+    'max_depth': 10
+}
+
+startLgb = datetime.now()
+clf_lgb = lgb.train(lgbm_params, dtrain_lgb, 50)
+stopLgb = datetime.now()
+executionTime_lgb = stopLgb - startLgb
+
+ypred_lgb = clf_lgb.predict(X_test)
+ypred_lgb = (ypred_lgb >= 0.5).astype(int)
+
+
+
+
+dtrain_xgb = xgb.DMatrix(X_train, label=y_train)
+
+parameters_xgb = {
+    'max_depth': 10,
+    'objective': 'binary:logistic',
+    'eval_metric': 'auc',
+    'learning_rate': 0.05
+}
+
+startXgb = datetime.now()
+xg = xgb.train(parameters_xgb, dtrain_xgb, 50)
+stopXgb = datetime.now()
+executionTime_xgb = stopXgb - startXgb
+
+dtest_xgb = xgb.DMatrix(X_test)
+ypred_xgb = xg.predict(dtest_xgb)
+ypred_xgb = (ypred_xgb >= 0.5).astype(int)
+
+cm_xgb = confusion_matrix(y_test, ypred_xgb)
+sns.heatmap(cm_xgb,fmt='g',cmap="crest" )
+
+for i in range(len(cm_xgb)):
+    for j in range(len(cm_xgb[0])):
+        plt.text(j + 0.5, i + 0.5, str(cm_xgb[i, j]), ha='center', va='center', fontsize=16, color='white')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('XGBoost Confusion Matrix')
+plt.show() 
+
+
+print("_________________________________________________")
+print("LGBM execution time is: ", executionTime_lgb )
+print("XGBoost execution time is: ", executionTime_xgb)
+print("_________________________________________________")
+print("Accuracy with LGBM = ", np.mean(ypred_lgb == y_test))
+print("Accuracy with XGBoost = ", np.mean(ypred_xgb == y_test))
+print("___________________________________________________")
+print("AUC score with LGBM is: ", roc_auc_score(y_test, ypred_lgb))
+print("AUC score with XGBoost is: ", roc_auc_score(y_test,ypred_xgb))
+
+```
+
+
+```{=html}
+<h3>4.Classification</h3>
+```
+
+```{python}
+df = pd.read_csv('creditcard.csv')
+```
+
+```{python}
+df.head()
+```
+
+```{python}
+df.describe()
+```
+
+```{python}
+df.info()
+```
+
+```{python}
+df.shape
+```
+
+```{python}
+df.columns
+```
+
+```{python}
+df.dropna(inplace=True)
+```
+
+```{python}
+df.isnull().sum()
+```
+
+```{python}
+df['Class'].unique()
+```
+
+```{python}
+correlation = df.corr()
+sns.heatmap(correlation)
+```
+
+```{python}
+sns.countplot(x='Class', data=df)
+plt.xlabel('Class (0: Not Fraud, 1: Fraud)')
+plt.ylabel('Count')
+plt.title('Credit Card Fraud Detection - Class Distribution')
+plt.show()
+```
+
+```{python}
+plt.figure(figsize=(10, 6))
+sns.histplot(x='Time', data=df, hue='Class', bins=30, kde=True)
+plt.xlabel('Transaction Time')
+plt.ylabel('Count')
+plt.title('Credit Card Fraud Detection - Transaction Time Distribution by Class')
+plt.show()
+```
+
+```{python}
+plt.figure(figsize=(8, 6))
+sns.barplot(x='Class', y='Amount', data=df, palette='Purples')
+plt.xlabel('Class (0: Not Fraud, 1: Fraud)')
+plt.ylabel('Transaction Amount')
+plt.title('Distribution of Transaction Amounts by Class')
+plt.show()
+```
+
+```{python}
+plt.figure(figsize=(8, 6))
+sns.barplot(x='Class', y='Time', data=df, palette='Purples')
+plt.xlabel('Class (0: Not Fraud, 1: Fraud)')
+plt.ylabel('Transaction Time')
+plt.title('Distribution of Transaction Times by Class')
+plt.show()
+```
+
+```{python}
+plt.figure(figsize=(8, 6))
+sns.barplot(x='Class', y='Amount', data=df, estimator=np.mean, palette='Blues')
+plt.xlabel('Class (0: Not Fraud, 1: Fraud)')
+plt.ylabel('Average Transaction Amount')
+plt.title('Average Transaction Amount by Class')
+plt.show()
+```
+
+```{python}
+df['Day_of_Week'] = pd.to_datetime(df['Time'], unit='s').dt.day_name()
+plt.figure(figsize=(12, 6))
+sns.countplot(x='Day_of_Week', data=df[df['Class'] == 1], order=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], palette='Greens')
+plt.xlabel('Day of the Week')
+plt.ylabel('Count of Fraudulent Transactions')
+plt.title('Count of Fraudulent Transactions by Day of the Week')
+plt.show()
+```
+
+```{python}
+sns.stripplot(x='Class', y='Time', data=df, palette='viridis')
+plt.xlabel('Class (0: Not Fraud, 1: Fraud)')
+plt.ylabel('Transaction Time')
+plt.title('Distribution of Transaction Times by Class')
+plt.show()
+```
+
+```{python}
+sns.boxplot(x=df['Time'], palette='Blues')
+plt.title('Boxplot of Transaction Times')
+plt.xlabel('Transaction Time')
+plt.show()
+```
+
+```{python}
+sns.lmplot(x='Amount', y='V25', data=df, hue='Class', palette='Set1', markers=['o', 's'], scatter_kws={'s': 50})
+plt.title('lmplot with Amount and V25')
+plt.show()
+```
+
+```{python}
+sns.lmplot(x='Amount', y='V1', data=df, hue='Class', palette='Set1', markers=['o', 's'], scatter_kws={'s': 50})
+plt.title('lmplot with Amount and V1')
+plt.show()
+```
+
+```{python}
+from sklearn.decomposition import PCA
+X = df.drop(columns='Class')
+y = df['Class']
+```
+```{python}
+X.head()
+```
+
+```{python}
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
+```
+
+```{python}
+from sklearn.preprocessing import StandardScaler
+X_train_numeric = X_train.select_dtypes(exclude=['object'])
+scaler = StandardScaler()
+scaler.fit(X_train_numeric)
+X_train_scaled = scaler.transform(X_train_numeric)
+X_train_scaled
+```
+
+```{python}
+X_train_encoded = pd.get_dummies(X_train)
+scaler.fit(X_train_encoded)
+X_train_scaled = scaler.transform(X_train_encoded)
+X_train_scaled
+```
+
+```{python}
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import pandas as pd
+clf = LogisticRegression(random_state=0, solver='sag', max_iter=1000)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
+numeric_features = X.select_dtypes(include=['float64']).columns
+categorical_features = X.select_dtypes(include=['object']).columns
+numeric_transformer = Pipeline(steps=[
+    ('scaler', StandardScaler())
+])
+
+categorical_transformer = Pipeline(steps=[
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transformer, numeric_features),
+        ('cat', categorical_transformer, categorical_features)
+    ])
+clf = Pipeline(steps=[('preprocessor', preprocessor),
+                      ('classifier', LogisticRegression(random_state=0, solver='lbfgs', max_iter=1000))])
+clf.fit(X_train, y_train)
+y_pred = clf.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+conf_matrix = confusion_matrix(y_test, y_pred)
+print(f'Accuracy: {accuracy:.4f}')
+print('\nConfusion Matrix:')
+print(conf_matrix)
+```
+
+```{python}
+clf.score(X_test, y_test)
+```
+
+```{python}
+clf.score(X_train, y_train)
+```
+
+```{python}
+from sklearn.metrics import classification_report
+target_names = ['not_fraud', 'fraud']
+print(classification_report(y_test, y_pred, target_names=target_names))
+```
+
+```{python}
+from sklearn.metrics import log_loss
+y_pred_proba = clf.predict_proba(X_test)[:, 1]
+loss = log_loss(y_test, y_pred_proba)
+print(f'Log Loss: {loss:.4f}')
+```
+
+```{python}
+from sklearn.preprocessing import StandardScaler
+from sklearn.naive_bayes import GaussianNB
+X_train_numeric, X_test_numeric, y_train, y_test = train_test_split(X_train_numeric, y_train, test_size=0.4, random_state=42)
+scaler = StandardScaler()
+X_train_scaled_numeric = scaler.fit_transform(X_train_numeric)
+X_test_scaled_numeric = scaler.transform(X_test_numeric)
+
+clf = GaussianNB()
+clf.fit(X_train_scaled_numeric, y_train)
+y_pred = clf.predict(X_test_scaled_numeric)
+accuracy = accuracy_score(y_test, y_pred)
+conf_matrix = confusion_matrix(y_test, y_pred)
+classification_report_str = classification_report(y_test, y_pred)
+
+print(f'Accuracy: {accuracy:.4f}')
+print('\nConfusion Matrix:')
+print(conf_matrix)
+print('\nClassification Report:')
+print(classification_report_str)
+```
+
+```{python}
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import pandas as pd
+X_train_numeric, X_test_numeric, y_train, y_test = train_test_split(X_train_numeric, y_train, test_size=0.4, random_state=42)
+
+scaler = StandardScaler()
+X_train_scaled_numeric = scaler.fit_transform(X_train_numeric)
+X_test_scaled_numeric = scaler.transform(X_test_numeric)
+dt_classifier = DecisionTreeClassifier(random_state=0)
+dt_classifier.fit(X_train_scaled_numeric, y_train)
+y_pred_dt = dt_classifier.predict(X_test_scaled_numeric)
+accuracy_dt = accuracy_score(y_test, y_pred_dt)
+conf_matrix_dt = confusion_matrix(y_test, y_pred_dt)
+classification_report_dt = classification_report(y_test, y_pred_dt)
+print(f'Decision Tree Classifier:')
+print(f'Accuracy: {accuracy_dt:.4f}')
+print('\nConfusion Matrix:')
+print(conf_matrix_dt)
+print('\nClassification Report:')
+print(classification_report_dt)
+```
+
+
+```{python}
+from sklearn.svm import SVC
+X_train_numeric, X_test_numeric, y_train, y_test = train_test_split(X_train_numeric, y_train, test_size=0.4, random_state=42)
+scaler = StandardScaler()
+X_train_scaled_numeric = scaler.fit_transform(X_train_numeric)
+X_test_scaled_numeric = scaler.transform(X_test_numeric)
+svm_classifier = SVC(random_state=0)
+svm_classifier.fit(X_train_scaled_numeric, y_train)
+y_pred_svm = svm_classifier.predict(X_test_scaled_numeric)
+accuracy_svm = accuracy_score(y_test, y_pred_svm)
+conf_matrix_svm = confusion_matrix(y_test, y_pred_svm)
+classification_report_svm = classification_report(y_test, y_pred_svm)
+
+print(f'SVM Classifier:')
+print(f'Accuracy: {accuracy_svm:.4f}')
+print('\nConfusion Matrix:')
+print(conf_matrix_svm)
+print('\nClassification Report:')
+print(classification_report_svm)
+```
+
+```{python}
+from sklearn.neighbors import KNeighborsClassifier
+X_train_numeric, X_test_numeric, y_train, y_test = train_test_split(X_train_numeric, y_train, test_size=0.4, random_state=42)
+scaler = StandardScaler()
+X_train_scaled_numeric = scaler.fit_transform(X_train_numeric)
+X_test_scaled_numeric = scaler.transform(X_test_numeric)
+knn_classifier = KNeighborsClassifier()
+knn_classifier.fit(X_train_scaled_numeric, y_train)
+y_pred_knn = knn_classifier.predict(X_test_scaled_numeric)
+accuracy_knn = accuracy_score(y_test, y_pred_knn)
+conf_matrix_knn = confusion_matrix(y_test, y_pred_knn)
+classification_report_knn = classification_report(y_test, y_pred_knn)
+
+print(f'K-Nearest Neighbors Classifier:')
+print(f'Accuracy: {accuracy_knn:.4f}')
+print('\nConfusion Matrix:')
+print(conf_matrix_knn)
+print('\nClassification Report:')
+print(classification_report_knn)
+```
+
+```{python}
+import tensorflow as tf
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Dense,Activation,Flatten
+from tensorflow.keras import Sequential
+```
+
+```{python}
+model = Sequential()
+model.add(Flatten(input_shape=(X_train_scaled_numeric.shape[1],)))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(16, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+earlystop = EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='min')
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+model.fit(X_train_scaled_numeric, y_train, epochs=10, validation_data=(X_test_scaled_numeric, y_test), callbacks=[earlystop])
+
+y_pred_probs = model.predict(X_test_scaled_numeric)
+y_pred_nn = (y_pred_probs > 0.5).astype(int)  
+
+accuracy_nn = accuracy_score(y_test, y_pred_nn)
+conf_matrix_nn = confusion_matrix(y_test, y_pred_nn)
+classification_report_nn = classification_report(y_test, y_pred_nn)
+
+print(f'Neural Network Classifier:')
+print(f'Accuracy: {accuracy_nn:.4f}')
+print('\nConfusion Matrix:')
+print(conf_matrix_nn)
+print('\nClassification Report:')
+print(classification_report_nn)
+```
+
+```{python}
+history = model.fit(X_train_scaled_numeric, y_train, epochs=10, validation_data=(X_test_scaled_numeric, y_test), callbacks=[earlystop])
+plt.figure(figsize=(12, 6))
+
+plt.subplot(1, 2, 1)
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend(['Train', 'Validation'], loc='upper right')
+
+plt.subplot(1, 2, 2)
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend(['Train', 'Validation'], loc='lower right')
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+from imblearn.over_sampling import SMOTE
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import make_classification
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import pandas as pd
+
+
+X, y = make_classification(n_classes=2, class_sep=2, weights=[0.1, 0.9], n_informative=3, n_redundant=1, flip_y=0, n_features=20, n_clusters_per_class=1, n_samples=1000, random_state=42)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+smote = SMOTE(random_state=42)
+X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
+
+y_train_series = pd.Series(y_train)
+
+print("Original Training Set Class Distribution:")
+print(y_train_series.value_counts())
+
+print("\nResampled Training Set Class Distribution:")
+print(pd.Series(y_resampled).value_counts())
+
+print("\nTest Set Class Distribution:")
+print(pd.Series(y_test).value_counts())
+
+scaler = StandardScaler()
+X_resampled_scaled = scaler.fit_transform(X_resampled)
+X_test_scaled = scaler.transform(X_test)
+
+knn_classifier = KNeighborsClassifier()
+
+knn_classifier.fit(X_resampled_scaled, y_resampled)
+
+y_pred_knn = knn_classifier.predict(X_test_scaled)
+
+accuracy_knn = accuracy_score(y_test, y_pred_knn)
+conf_matrix_knn = confusion_matrix(y_test, y_pred_knn)
+classification_report_knn = classification_report(y_test, y_pred_knn)
+
+print(f'\nK-Nearest Neighbors Classifier:')
+print(f'Accuracy: {accuracy_knn:.4f}')
+print('\nConfusion Matrix:')
+print(conf_matrix_knn)
+print('\nClassification Report:')
+print(classification_report_knn)
+```
+
+```{python}
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import make_classification
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import pandas as pd
+
+X, y = make_classification(n_classes=2, class_sep=2, weights=[0.1, 0.9], n_informative=3, n_redundant=1, flip_y=0, n_features=20, n_clusters_per_class=1, n_samples=1000, random_state=42)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+rus = RandomUnderSampler(random_state=42)
+X_resampled, y_resampled = rus.fit_resample(X_train, y_train)
+
+y_resampled_series = pd.Series(y_resampled)
+
+print("Resampled Training Set Class Distribution:")
+print(y_resampled_series.value_counts())
+
+scaler = StandardScaler()
+X_resampled_scaled = scaler.fit_transform(X_resampled)
+X_test_scaled = scaler.transform(X_test)
+
+knn_classifier = KNeighborsClassifier()
+knn_classifier.fit(X_resampled_scaled, y_resampled)
+
+y_pred_knn = knn_classifier.predict(X_test_scaled)
+
+
+accuracy_knn = accuracy_score(y_test, y_pred_knn)
+conf_matrix_knn = confusion_matrix(y_test, y_pred_knn)
+classification_report_knn = classification_report(y_test, y_pred_knn)
+
+print(f'\nK-Nearest Neighbors Classifier:')
+print(f'Accuracy: {accuracy_knn:.4f}')
+print('\nConfusion Matrix:')
+print(conf_matrix_knn)
+print('\nClassification Report:')
+print(classification_report_knn)
+
+```
+
+```{=html}
+<h1 >5.Outlier Detection</h1>
+```
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import warnings
+warnings.filterwarnings("ignore")
+from IPython.display import Image
+from sklearn.preprocessing import StandardScaler
+sns.set(style="darkgrid", palette="pastel", color_codes=True)
+sns.set_context('talk')
+```
+
+```{python}
+df = pd.read_csv('insurance.csv')
+```
+
+```{python}
+df.head(5)
+```
+
+```{python}
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+
+fig = make_subplots(rows=1, cols=len(df.select_dtypes(exclude='object').columns), shared_yaxes=False)
+
+for i, col in enumerate(df.select_dtypes(exclude='object').columns):
+    fig.add_trace(go.Box(y=df[col], name=col), row=1, col=i+1)
+
+for i, col in enumerate(df.select_dtypes(exclude='object').columns):
+    fig.update_xaxes(title_text=col, row=1, col=i+1)
+fig.update_layout(title_text='Box Plots for Numerical Features',title_x=0.5, showlegend=False,width=1000,  height=500 )
+fig.show()
+```
+
+```{python}
+def out_iqr(df , column):
+    global lower,upper
+    q25, q75 = np.quantile(df[column], 0.25), np.quantile(df[column], 0.75)
+    iqr = q75 - q25
+    cutOff = iqr * 1.5
+    lower, upper = q25 - cutOff, q75 + cutOff
+    print('The IQR is',iqr)
+    print('The lower bound value is', lower)
+    print('The upper bound value is', upper)
+    df1 = df[df[column] > upper]
+    df2 = df[df[column] < lower]
+    return print('Total number of outliers are', df1.shape[0]+ df2.shape[0])
+```
+
+```{python}
+out_iqr(df,'age')
+```
+
+```{python}
+import plotly.express as px
+fig = make_subplots(rows=1, cols=len(df.select_dtypes(exclude='object').columns), shared_yaxes=False)
+for i, col in enumerate(df.select_dtypes(exclude='object').columns):
+    fig.add_trace(go.Histogram(x=df[col], name=col, ), row=1, col=i+1)
+for i, col in enumerate(df.select_dtypes(exclude='object').columns):
+    fig.update_xaxes(title_text=col, row=1, col=i+1)
+fig.update_layout(
+    title_text='Histograms for Numerical Features',
+    title_x=0.5,
+    showlegend=False,
+    width=1000,  
+    height=500  
+)
+fig.show()
+
+```
+
+```{python}
+from collections import Counter
+def IQR_method(df, n, features):
+    outlier_list = []
+
+    for column in features:
+        Q1 = np.percentile(df[column], 25)
+        Q3 = np.percentile(df[column], 75)
+
+        IQR = Q3 - Q1
+
+        outlier_step = 1.5 * IQR
+
+        outlier_list_column = df[(df[column] < Q1 - outlier_step) | (df[column] > Q3 + outlier_step)].index
+        outlier_list.extend(outlier_list_column)
+    outlier_list = Counter(outlier_list)
+    multiple_outliers = [k for k, v in outlier_list.items() if v > n]
+    total_outliers = sum(v for k, v in outlier_list.items() if v > n)
+    print('Total number of outliers is:', total_outliers)
+    return multiple_outliers
+```
+
+```{python}
+feature_list = ['age', 'bmi', 'children', 'charges']
+Outliers_IQR = IQR_method(df, 1, feature_list)
+df_out = df.drop(Outliers_IQR, axis=0).reset_index(drop=True)
+```
+
+```{python}
+features = ['age', 'bmi', 'children', 'charges']
+plt.figure(figsize=(16,10))
+for i, feature in enumerate(features, 1):
+    plt.subplot(2, len(features), i)
+    sns.histplot(df[feature], bins=30, kde=True)
+    plt.title(f'{feature}  Before Dropping Outliers')
+
+for i, feature in enumerate(features, 1):
+    plt.subplot(2, len(features), i + len(features))
+    sns.histplot(df_out[feature], bins=30, kde=True)
+    plt.title(f'{feature}  After Dropping Outliers')
+plt.tight_layout()
+plt.show()
+
+```
+
+```{python}
+from collections import Counter
+def StDev_method(df, n, features):
+    outlier_indices = []
+    for column in features:
+        mean = df[column].mean()
+        std = df[column].std()
+
+        cutOff= std * 3
+        outlier_listColumn = df[(df[column] < mean - cutOff) | (df[column] > mean +cutOff)].index
+        outlier_indices.extend(outlier_listColumn)
+
+    outlier_indices = Counter(outlier_indices)
+    multiple_outliers = [k for k, v in outlier_indices.items() if v > n]
+
+    total_outliers = sum(v for k, v in outlier_indices.items() if v > n)
+    print('Total number of outliers is:', total_outliers)
+
+    return multiple_outliers
+
+```
+
+```{python}
+Outliers_StDev = StDev_method(df,1,feature_list)
+df_out2 = df.drop(Outliers_StDev, axis = 0).reset_index(drop=True)
+```
+
+```{python}
+
+data_mean, data_std = df['charges'].mean(), df['charges'].std()
+cutOff = data_std * 3
+lower, upper = data_mean - cutOff, data_mean + cutOff
+print('The lower bound value is:', lower)
+print('The upper bound value is:', upper)
+plt.figure(figsize=(10, 6))
+sns.histplot(x='charges', data=df, bins=70, kde=True)
+plt.axvspan(xmin=lower, xmax=df['charges'].min(), alpha=0.2, color='red', label='Outlier Bound')
+plt.axvspan(xmin=upper, xmax=df['charges'].max(), alpha=0.2, color='red')
+plt.title('Histogram of Charges with Outlier Bound')
+plt.xlabel('Charges')
+plt.ylabel('Frequency')
+plt.legend()
+plt.show()
+```
+
+```{python}
+
+plt.figure(figsize=(16, 8))
+
+for i, feature in enumerate(features, 1):
+    plt.subplot(2, len(features), i)
+    sns.scatterplot(x=range(len(df)), y=df[feature], alpha=0.5)
+    plt.title(f'{feature} Before Dropping Outliers')
+
+for i, feature in enumerate(features, 1):
+    plt.subplot(2, len(features), i + len(features))
+    sns.scatterplot(x=range(len(df_out2)), y=df_out2[feature], alpha=0.5)
+    plt.title(f'{feature} After Dropping Outliers')
+
+plt.tight_layout()
+plt.show()
+
+```
+
+```{python}
+from collections import Counter
+def z_score_method(df, n, features, threshold=3):
+    outlier_list = []
+    for column in features:
+        mean = df[column].mean()
+        std = df[column].std()
+        zScore = abs((df[column] - mean) / std)
+        outlier_list_column = df[zScore > threshold].index
+        outlier_list.extend(outlier_list_column)
+
+    outlier_list = Counter(outlier_list)
+    multiple_outliers = [k for k, v in outlier_list.items() if v > n]
+    total_outliers = sum(v for k, v in outlier_list.items() if v > n)
+    print('Total number of outliers is:', total_outliers)
+    return multiple_outliers
+```
+
+```{python}
+Outliers_z_score = z_score_method(df,1,feature_list)
+
+df_out3 = df.drop(Outliers_z_score, axis = 0).reset_index(drop=True)
+```
+
+```{python}
+
+plt.figure(figsize=(16 , 10))
+
+for i, feature in enumerate(features, 1):
+    plt.subplot(3, len(features), i)
+    sns.histplot(df[feature], bins=30, kde=True)
+    plt.title(f'{feature} Before Dropping Outliers')
+    plt.subplot(3, len(features), i + len(features))
+    sns.histplot(df_out[feature], bins=30, kde=True)
+    plt.title(f'{feature} After Dropping Outliers')
+
+    plt.subplot(3, len(features), i + 2 * len(features))
+    data_mean = df[feature].mean()
+    data_std = df[feature].std()
+    zScore = abs((df[feature] - data_mean) / data_std)
+    sns.scatterplot(x=range(len(df)), y= zScore, alpha=0.5)
+    plt.axhline(y=3, color='red', linestyle='--', label='Threshold')
+    plt.title(f'{feature} Z-scores')
+
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+from scipy.stats import median_abs_deviation
+
+def z_scoremod_method(df, n, features):
+    outlier_list = []
+
+    for column in features:
+        data_mean = df[column].mean()
+        threshold = 3
+        MAD = median_abs_deviation(df[column])
+        mod_z_score = abs(0.6745 * (df[column] - data_mean) / MAD)
+        outlier_list_column = df[mod_z_score > threshold].index
+        outlier_list.extend(outlier_list_column)
+    outlier_list = Counter(outlier_list)
+    multiple_outliers = [k for k, v in outlier_list.items() if v > n]
+    total_outliers = sum(v for k, v in outlier_list.items() if v > n)
+    print('Total number of outliers is:', total_outliers)
+    return multiple_outliers
+```
+
+```{python}
+Outliers_z_score = z_scoremod_method(df,1,feature_list)
+df_out4 = df.drop(Outliers_z_score, axis = 0).reset_index(drop=True)
+```
+
+```{python}
+plt.figure(figsize=(16, 12))
+for i, feature in enumerate(features, 1):
+    plt.subplot(3, len(features), i)
+    sns.histplot(df[feature], bins=30, kde=True)
+    plt.title(f'{feature} Before Dropping Outliers')
+
+outliers_z_scoremod = z_scoremod_method(df, 1, features)
+df_out_z_scoremod = df.drop(outliers_z_scoremod, axis=0).reset_index(drop=True)
+
+for i, feature in enumerate(features, 1):
+    plt.subplot(3, len(features), i + len(features))
+    sns.histplot(df_out_z_scoremod[feature], bins=30, kde=True)
+    plt.title(f'{feature}  Z-score Modified Method')
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+from sklearn.ensemble import IsolationForest
+features = ['age', 'bmi', 'children', 'charges']
+clf = IsolationForest(contamination=0.05, random_state=42)  
+outliers = clf.fit_predict(df[features])
+outlier_mask = outliers == -1
+plt.figure(figsize=(20, 8))
+for i, feature in enumerate(features, 1):
+    plt.subplot(2, len(features), i)
+    sns.histplot(df[feature], bins=30, kde=True)
+    plt.title(f'{feature} Before Dropping Outliers')
+
+for i, feature in enumerate(features, 1):
+    plt.subplot(2, len(features), i + len(features))
+    sns.scatterplot(x=range(len(df)), y=df[feature], hue=outlier_mask, palette={True: 'red', False: 'blue'})
+    plt.title(f'{feature} with Outliers Highlighted')
+plt.tight_layout()
+plt.show()
+
+```
+
+```{python}
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import DBSCAN
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
+# Assuming df and features are defined before this code snippet
+
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(df[features])
+
+dbscan = DBSCAN(eps=0.5, min_samples=10)
+label = dbscan.fit_predict(scaled_data)
+nclusters = len(set(label)) - (1 if -1 in label else 0)
+
+print('The number of clusters in the dataset is:', nclusters)
+print(pd.Series(label).value_counts())
+
+for i, feature1 in enumerate(features):
+    for j, feature2 in enumerate(features):
+        plt.figure(figsize=(10, 6))
+        sns.scatterplot(x=df[feature1], y=df[feature2], hue=label, palette='viridis', alpha=0.7)
+        plt.title(f'{feature1} vs {feature2}')
+        plt.legend(fontsize="small", bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.show()
+
+
+```
