@@ -2,8 +2,13 @@
 project:
   type: website
   output-dir: docs   lfs track "F:\Quarto"
-format: html
+format:
+  html:
+    code-tools: true
 jupyter: python3
+website:
+  repo-url: https://swethaa-ramesh.github.io/ML_FinalAssignments/
+  repo-actions: [source]
 
 ---
 ```{=html}
@@ -28,7 +33,6 @@ sns.set_context('talk')
 
 ```{python}
 df = pd.read_csv('Walmart_Store_sales.csv')
-
 df.head(5)
 ```
 
@@ -64,12 +68,9 @@ df.duplicated().any()
 
 ```{python}
 from scipy.stats import norm
-
 variable_of_interest = 'Weekly_Sales'
-
 plt.figure(figsize=(8, 6))
 sns.histplot(df[variable_of_interest], kde=True, bins=30, color='blue', stat='density')
-
 mu, std = df[variable_of_interest].mean(), df[variable_of_interest].std()
 xmin, xmax = plt.xlim()
 x = np.linspace(xmin, xmax, 100).round(2)
@@ -96,7 +97,6 @@ for i, column in enumerate(df.columns):
     row_idx = i // num_cols
     col_idx = i % num_cols
     sns.histplot(df[column], kde=True, bins=30, color='blue', stat='density', ax=axes[row_idx, col_idx])
-
     mu, std = df[column].mean(), df[column].std()
     xmin, xmax = axes[row_idx, col_idx].get_xlim()
     x = np.linspace(xmin, xmax, 100)
@@ -229,7 +229,6 @@ for i, column in enumerate(numeric_columns):
 
 plt.tight_layout()
 plt.show()
-
 ```
 
 ```{=html}
@@ -314,7 +313,6 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 top_rated_descriptions = " ".join(df['Description'])
 wordcloud = WordCloud(width=800, height=400, background_color='white').generate(top_rated_descriptions)
-# Plot the WordCloud image
 plt.figure(figsize=(10, 5))
 plt.imshow(wordcloud, interpolation='bilinear')
 plt.axis('off')
@@ -351,7 +349,6 @@ plt.show()
 ```
 ```{python}
 X = df[['Year', 'Episodes', 'Rating']].dropna()
-
 wcss = []
 for i in range(1, 11):
     kmeans = KMeans(n_clusters=i, init='k-means++', random_state=0)
@@ -509,7 +506,6 @@ sns.heatmap(df.corr(), cmap='coolwarm', fmt=".2f", linewidths=.5)
 for i in range(len(df.corr())):
     for j in range(len(df.corr())):
         plt.text(j + 0.5, i + 0.5, f"{df.corr().iloc[i, j]:.2f}", ha='center', va='center', fontsize=10)
-
 plt.title('Correlation Heatmap')
 plt.show()
 ```
@@ -680,9 +676,7 @@ X_test_encoded = pd.get_dummies(X_test, columns=categorical_cols)
 
 ```{python}
 non_numeric_cols_train = X_train_encoded.select_dtypes(exclude=['float64', 'int64']).columns
-
 non_numeric_cols_test = X_test_encoded.select_dtypes(exclude=['float64', 'int64']).columns
-
 print("Non-numeric columns in X_train_encoded:", non_numeric_cols_train)
 print("Non-numeric columns in X_test_encoded:", non_numeric_cols_test)
 ```
@@ -1114,39 +1108,28 @@ lgbm_params = {
     'num_leaves': 100,
     'max_depth': 10
 }
-
 startLgb = datetime.now()
 clf_lgb = lgb.train(lgbm_params, dtrain_lgb, 50)
 stopLgb = datetime.now()
 executionTime_lgb = stopLgb - startLgb
-
 ypred_lgb = clf_lgb.predict(X_test)
 ypred_lgb = (ypred_lgb >= 0.5).astype(int)
-
-
-
-
 dtrain_xgb = xgb.DMatrix(X_train, label=y_train)
-
 parameters_xgb = {
     'max_depth': 10,
     'objective': 'binary:logistic',
     'eval_metric': 'auc',
     'learning_rate': 0.05
 }
-
 startXgb = datetime.now()
 xg = xgb.train(parameters_xgb, dtrain_xgb, 50)
 stopXgb = datetime.now()
 executionTime_xgb = stopXgb - startXgb
-
 dtest_xgb = xgb.DMatrix(X_test)
 ypred_xgb = xg.predict(dtest_xgb)
 ypred_xgb = (ypred_xgb >= 0.5).astype(int)
-
 cm_xgb = confusion_matrix(y_test, ypred_xgb)
 sns.heatmap(cm_xgb,fmt='g',cmap="crest" )
-
 for i in range(len(cm_xgb)):
     for j in range(len(cm_xgb[0])):
         plt.text(j + 0.5, i + 0.5, str(cm_xgb[i, j]), ha='center', va='center', fontsize=16, color='white')
@@ -1154,8 +1137,6 @@ plt.xlabel('Predicted')
 plt.ylabel('Actual')
 plt.title('XGBoost Confusion Matrix')
 plt.show() 
-
-
 print("_________________________________________________")
 print("LGBM execution time is: ", executionTime_lgb )
 print("XGBoost execution time is: ", executionTime_xgb)
@@ -1165,14 +1146,10 @@ print("Accuracy with XGBoost = ", np.mean(ypred_xgb == y_test))
 print("___________________________________________________")
 print("AUC score with LGBM is: ", roc_auc_score(y_test, ypred_lgb))
 print("AUC score with XGBoost is: ", roc_auc_score(y_test,ypred_xgb))
-
 ```
-
-
 ```{=html}
 <h3>4.Classification</h3>
 ```
-
 ```{python}
 df = pd.read_csv('creditcard.csv')
 ```
@@ -1340,11 +1317,9 @@ categorical_features = X.select_dtypes(include=['object']).columns
 numeric_transformer = Pipeline(steps=[
     ('scaler', StandardScaler())
 ])
-
 categorical_transformer = Pipeline(steps=[
     ('onehot', OneHotEncoder(handle_unknown='ignore'))
 ])
-
 preprocessor = ColumnTransformer(
     transformers=[
         ('num', numeric_transformer, numeric_features),
@@ -1389,14 +1364,12 @@ X_train_numeric, X_test_numeric, y_train, y_test = train_test_split(X_train_nume
 scaler = StandardScaler()
 X_train_scaled_numeric = scaler.fit_transform(X_train_numeric)
 X_test_scaled_numeric = scaler.transform(X_test_numeric)
-
 clf = GaussianNB()
 clf.fit(X_train_scaled_numeric, y_train)
 y_pred = clf.predict(X_test_scaled_numeric)
 accuracy = accuracy_score(y_test, y_pred)
 conf_matrix = confusion_matrix(y_test, y_pred)
 classification_report_str = classification_report(y_test, y_pred)
-
 print(f'Accuracy: {accuracy:.4f}')
 print('\nConfusion Matrix:')
 print(conf_matrix)
@@ -1410,7 +1383,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import pandas as pd
 X_train_numeric, X_test_numeric, y_train, y_test = train_test_split(X_train_numeric, y_train, test_size=0.4, random_state=42)
-
 scaler = StandardScaler()
 X_train_scaled_numeric = scaler.fit_transform(X_train_numeric)
 X_test_scaled_numeric = scaler.transform(X_test_numeric)
@@ -1441,7 +1413,6 @@ y_pred_svm = svm_classifier.predict(X_test_scaled_numeric)
 accuracy_svm = accuracy_score(y_test, y_pred_svm)
 conf_matrix_svm = confusion_matrix(y_test, y_pred_svm)
 classification_report_svm = classification_report(y_test, y_pred_svm)
-
 print(f'SVM Classifier:')
 print(f'Accuracy: {accuracy_svm:.4f}')
 print('\nConfusion Matrix:')
@@ -1462,7 +1433,6 @@ y_pred_knn = knn_classifier.predict(X_test_scaled_numeric)
 accuracy_knn = accuracy_score(y_test, y_pred_knn)
 conf_matrix_knn = confusion_matrix(y_test, y_pred_knn)
 classification_report_knn = classification_report(y_test, y_pred_knn)
-
 print(f'K-Nearest Neighbors Classifier:')
 print(f'Accuracy: {accuracy_knn:.4f}')
 print('\nConfusion Matrix:')
@@ -1486,16 +1456,12 @@ model.add(Dense(16, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 earlystop = EarlyStopping(monitor='val_loss', patience=2, verbose=0, mode='min')
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
 model.fit(X_train_scaled_numeric, y_train, epochs=10, validation_data=(X_test_scaled_numeric, y_test), callbacks=[earlystop])
-
 y_pred_probs = model.predict(X_test_scaled_numeric)
 y_pred_nn = (y_pred_probs > 0.5).astype(int)  
-
 accuracy_nn = accuracy_score(y_test, y_pred_nn)
 conf_matrix_nn = confusion_matrix(y_test, y_pred_nn)
 classification_report_nn = classification_report(y_test, y_pred_nn)
-
 print(f'Neural Network Classifier:')
 print(f'Accuracy: {accuracy_nn:.4f}')
 print('\nConfusion Matrix:')
@@ -1536,39 +1502,26 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 import pandas as pd
 
-
 X, y = make_classification(n_classes=2, class_sep=2, weights=[0.1, 0.9], n_informative=3, n_redundant=1, flip_y=0, n_features=20, n_clusters_per_class=1, n_samples=1000, random_state=42)
-
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
 smote = SMOTE(random_state=42)
 X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
-
 y_train_series = pd.Series(y_train)
-
 print("Original Training Set Class Distribution:")
 print(y_train_series.value_counts())
-
 print("\nResampled Training Set Class Distribution:")
 print(pd.Series(y_resampled).value_counts())
-
 print("\nTest Set Class Distribution:")
 print(pd.Series(y_test).value_counts())
-
 scaler = StandardScaler()
 X_resampled_scaled = scaler.fit_transform(X_resampled)
 X_test_scaled = scaler.transform(X_test)
-
 knn_classifier = KNeighborsClassifier()
-
 knn_classifier.fit(X_resampled_scaled, y_resampled)
-
 y_pred_knn = knn_classifier.predict(X_test_scaled)
-
 accuracy_knn = accuracy_score(y_test, y_pred_knn)
 conf_matrix_knn = confusion_matrix(y_test, y_pred_knn)
 classification_report_knn = classification_report(y_test, y_pred_knn)
-
 print(f'\nK-Nearest Neighbors Classifier:')
 print(f'Accuracy: {accuracy_knn:.4f}')
 print('\nConfusion Matrix:')
@@ -1587,38 +1540,27 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 import pandas as pd
 
 X, y = make_classification(n_classes=2, class_sep=2, weights=[0.1, 0.9], n_informative=3, n_redundant=1, flip_y=0, n_features=20, n_clusters_per_class=1, n_samples=1000, random_state=42)
-
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
 rus = RandomUnderSampler(random_state=42)
 X_resampled, y_resampled = rus.fit_resample(X_train, y_train)
-
 y_resampled_series = pd.Series(y_resampled)
-
 print("Resampled Training Set Class Distribution:")
 print(y_resampled_series.value_counts())
-
 scaler = StandardScaler()
 X_resampled_scaled = scaler.fit_transform(X_resampled)
 X_test_scaled = scaler.transform(X_test)
-
 knn_classifier = KNeighborsClassifier()
 knn_classifier.fit(X_resampled_scaled, y_resampled)
-
 y_pred_knn = knn_classifier.predict(X_test_scaled)
-
-
 accuracy_knn = accuracy_score(y_test, y_pred_knn)
 conf_matrix_knn = confusion_matrix(y_test, y_pred_knn)
 classification_report_knn = classification_report(y_test, y_pred_knn)
-
 print(f'\nK-Nearest Neighbors Classifier:')
 print(f'Accuracy: {accuracy_knn:.4f}')
 print('\nConfusion Matrix:')
 print(conf_matrix_knn)
 print('\nClassification Report:')
 print(classification_report_knn)
-
 ```
 
 ```{=html}
@@ -1649,9 +1591,7 @@ df.head(5)
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-
 fig = make_subplots(rows=1, cols=len(df.select_dtypes(exclude='object').columns), shared_yaxes=False)
-
 for i, col in enumerate(df.select_dtypes(exclude='object').columns):
     fig.add_trace(go.Box(y=df[col], name=col), row=1, col=i+1)
 
@@ -1695,22 +1635,17 @@ fig.update_layout(
     height=500  
 )
 fig.show()
-
 ```
 
 ```{python}
 from collections import Counter
 def IQR_method(df, n, features):
     outlier_list = []
-
     for column in features:
         Q1 = np.percentile(df[column], 25)
         Q3 = np.percentile(df[column], 75)
-
         IQR = Q3 - Q1
-
         outlier_step = 1.5 * IQR
-
         outlier_list_column = df[(df[column] < Q1 - outlier_step) | (df[column] > Q3 + outlier_step)].index
         outlier_list.extend(outlier_list_column)
     outlier_list = Counter(outlier_list)
@@ -1733,7 +1668,6 @@ for i, feature in enumerate(features, 1):
     plt.subplot(2, len(features), i)
     sns.histplot(df[feature], bins=30, kde=True)
     plt.title(f'{feature}  Before Dropping Outliers')
-
 for i, feature in enumerate(features, 1):
     plt.subplot(2, len(features), i + len(features))
     sns.histplot(df_out[feature], bins=30, kde=True)
@@ -1750,17 +1684,13 @@ def StDev_method(df, n, features):
     for column in features:
         mean = df[column].mean()
         std = df[column].std()
-
         cutOff= std * 3
         outlier_listColumn = df[(df[column] < mean - cutOff) | (df[column] > mean +cutOff)].index
         outlier_indices.extend(outlier_listColumn)
-
     outlier_indices = Counter(outlier_indices)
     multiple_outliers = [k for k, v in outlier_indices.items() if v > n]
-
     total_outliers = sum(v for k, v in outlier_indices.items() if v > n)
     print('Total number of outliers is:', total_outliers)
-
     return multiple_outliers
 
 ```
@@ -1771,7 +1701,6 @@ df_out2 = df.drop(Outliers_StDev, axis = 0).reset_index(drop=True)
 ```
 
 ```{python}
-
 data_mean, data_std = df['charges'].mean(), df['charges'].std()
 cutOff = data_std * 3
 lower, upper = data_mean - cutOff, data_mean + cutOff
@@ -1789,19 +1718,15 @@ plt.show()
 ```
 
 ```{python}
-
 plt.figure(figsize=(16, 8))
-
 for i, feature in enumerate(features, 1):
     plt.subplot(2, len(features), i)
     sns.scatterplot(x=range(len(df)), y=df[feature], alpha=0.5)
     plt.title(f'{feature} Before Dropping Outliers')
-
 for i, feature in enumerate(features, 1):
     plt.subplot(2, len(features), i + len(features))
     sns.scatterplot(x=range(len(df_out2)), y=df_out2[feature], alpha=0.5)
     plt.title(f'{feature} After Dropping Outliers')
-
 plt.tight_layout()
 plt.show()
 
@@ -1817,7 +1742,6 @@ def z_score_method(df, n, features, threshold=3):
         zScore = abs((df[column] - mean) / std)
         outlier_list_column = df[zScore > threshold].index
         outlier_list.extend(outlier_list_column)
-
     outlier_list = Counter(outlier_list)
     multiple_outliers = [k for k, v in outlier_list.items() if v > n]
     total_outliers = sum(v for k, v in outlier_list.items() if v > n)
@@ -1827,14 +1751,11 @@ def z_score_method(df, n, features, threshold=3):
 
 ```{python}
 Outliers_z_score = z_score_method(df,1,feature_list)
-
 df_out3 = df.drop(Outliers_z_score, axis = 0).reset_index(drop=True)
 ```
 
 ```{python}
-
 plt.figure(figsize=(16 , 10))
-
 for i, feature in enumerate(features, 1):
     plt.subplot(3, len(features), i)
     sns.histplot(df[feature], bins=30, kde=True)
@@ -1842,7 +1763,6 @@ for i, feature in enumerate(features, 1):
     plt.subplot(3, len(features), i + len(features))
     sns.histplot(df_out[feature], bins=30, kde=True)
     plt.title(f'{feature} After Dropping Outliers')
-
     plt.subplot(3, len(features), i + 2 * len(features))
     data_mean = df[feature].mean()
     data_std = df[feature].std()
@@ -1850,17 +1770,14 @@ for i, feature in enumerate(features, 1):
     sns.scatterplot(x=range(len(df)), y= zScore, alpha=0.5)
     plt.axhline(y=3, color='red', linestyle='--', label='Threshold')
     plt.title(f'{feature} Z-scores')
-
 plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
 from scipy.stats import median_abs_deviation
-
 def z_scoremod_method(df, n, features):
     outlier_list = []
-
     for column in features:
         data_mean = df[column].mean()
         threshold = 3
@@ -1886,10 +1803,8 @@ for i, feature in enumerate(features, 1):
     plt.subplot(3, len(features), i)
     sns.histplot(df[feature], bins=30, kde=True)
     plt.title(f'{feature} Before Dropping Outliers')
-
 outliers_z_scoremod = z_scoremod_method(df, 1, features)
 df_out_z_scoremod = df.drop(outliers_z_scoremod, axis=0).reset_index(drop=True)
-
 for i, feature in enumerate(features, 1):
     plt.subplot(3, len(features), i + len(features))
     sns.histplot(df_out_z_scoremod[feature], bins=30, kde=True)
@@ -1909,14 +1824,12 @@ for i, feature in enumerate(features, 1):
     plt.subplot(2, len(features), i)
     sns.histplot(df[feature], bins=30, kde=True)
     plt.title(f'{feature} Before Dropping Outliers')
-
 for i, feature in enumerate(features, 1):
     plt.subplot(2, len(features), i + len(features))
     sns.scatterplot(x=range(len(df)), y=df[feature], hue=outlier_mask, palette={True: 'red', False: 'blue'})
     plt.title(f'{feature} with Outliers Highlighted')
 plt.tight_layout()
 plt.show()
-
 ```
 
 ```{python}
@@ -1925,19 +1838,13 @@ from sklearn.cluster import DBSCAN
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-
-# Assuming df and features are defined before this code snippet
-
 scaler = StandardScaler()
 scaled_data = scaler.fit_transform(df[features])
-
 dbscan = DBSCAN(eps=0.5, min_samples=10)
 label = dbscan.fit_predict(scaled_data)
 nclusters = len(set(label)) - (1 if -1 in label else 0)
-
 print('The number of clusters in the dataset is:', nclusters)
 print(pd.Series(label).value_counts())
-
 for i, feature1 in enumerate(features):
     for j, feature2 in enumerate(features):
         plt.figure(figsize=(10, 6))
@@ -1945,6 +1852,4 @@ for i, feature1 in enumerate(features):
         plt.title(f'{feature1} vs {feature2}')
         plt.legend(fontsize="small", bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.show()
-
-
 ```
